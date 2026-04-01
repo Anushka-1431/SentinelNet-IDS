@@ -19,35 +19,42 @@ import os
 st.set_page_config(page_title="SentinelNet IDS", layout="wide")
 
 # ==============================
-# GOOGLE DRIVE DOWNLOADER (FIXED)
+# 🔥 HACKER UI STYLE
 # ==============================
-def download_file_from_drive(file_id, destination):
-    if os.path.exists(destination):
-        return
+st.markdown("""
+<style>
+body { background-color: #05080f; }
 
-    URL = "https://drive.google.com/uc?export=download"
-    session = requests.Session()
+h1 {
+    text-shadow: 0 0 15px #00f7ff;
+}
 
-    response = session.get(URL, params={'id': file_id}, stream=True)
+.stMetric {
+    background: #0d1117;
+    border: 1px solid #00f7ff;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0,255,255,0.4);
+}
 
-    for key, value in response.cookies.items():
-        if key.startswith('download_warning'):
-            response = session.get(URL, params={'id': file_id, 'confirm': value}, stream=True)
+.stButton>button {
+    background: black;
+    border: 1px solid #00f7ff;
+    color: #00f7ff;
+    font-weight: bold;
+    border-radius: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    with open(destination, "wb") as f:
-        for chunk in response.iter_content(32768):
-            if chunk:
-                f.write(chunk)
-
-import gdown
-import os
-
+# ==============================
+# GOOGLE DRIVE LOADER (gdown)
+# ==============================
 def load_pkl_from_drive(file_id, filename):
     if not os.path.exists(filename):
         url = f"https://drive.google.com/uc?id={file_id}"
         gdown.download(url, filename, quiet=False)
     return joblib.load(filename)
-
 
 def load_csv_from_drive(file_id, filename):
     if not os.path.exists(filename):
@@ -64,9 +71,7 @@ def load_models():
     ocsvm = joblib.load("ocsvm_model.pkl")
     pca = joblib.load("pca_model.pkl")
     t = joblib.load("threshold.pkl")
-
     lof = load_pkl_from_drive("1WcOnd7FWSw3fHUNVS-7jmEWI2-ggWWfY", "lof_model.pkl")
-
     return iso, ocsvm, pca, t, lof
 
 iso, ocsvm, pca_model, best_t, lof = load_models()
@@ -80,14 +85,11 @@ def load_data():
         "1suz79KQkN4sbJT5n_B4vW844z06Lx04Y",
         "synthetic_network_data.csv"
     )
-
     X_real = load_pkl_from_drive(
         "1sLgVZFuHgyOlzbdnXhnEkCbEH6GcBk2E",
         "X_real.pkl"
     )
-
     y_real = joblib.load("y_real.pkl")
-
     return synthetic_df.values, X_real, y_real
 
 X_synthetic_scaled, X_real, y_real = load_data()
@@ -130,7 +132,7 @@ def simulate(sample_size):
     return pred, score, idx
 
 # ==============================
-# REAL EVAL
+# REAL EVALUATION
 # ==============================
 @st.cache_data
 def evaluate_real():
@@ -154,7 +156,6 @@ def evaluate_real():
 # ==============================
 mode = st.radio("Mode", ["Manual", "Real-Time"], horizontal=True)
 sample_size = st.slider("Sample Size", 100, 5000, 1000)
-
 run = st.button("🚀 Run Detection")
 
 # ==============================
@@ -170,17 +171,37 @@ if run or mode == "Real-Time":
 
     st.session_state.history.append(attack_percent)
 
-    # ALERT
+    # 🚨 ALERT
     if attack_count > 0:
-        st.error(f"🚨 {attack_count} Intrusions Detected!")
+        st.markdown(f"""
+        <div style="background:#ff0000;padding:15px;border-radius:10px;
+        text-align:center;font-size:22px;color:white;animation:blink 1s infinite;">
+        🚨 CRITICAL ALERT: {attack_count} Intrusions Detected!
+        </div>
+        <style>
+        @keyframes blink {{
+            0% {{opacity:1;}}
+            50% {{opacity:0.4;}}
+            100% {{opacity:1;}}
+        }}
+        </style>
+        """, unsafe_allow_html=True)
     else:
-        st.success("✅ System Secure")
+        st.success("✅ SYSTEM SECURE")
 
     # METRICS
     c1, c2, c3 = st.columns(3)
     c1.metric("Traffic", len(pred))
     c2.metric("Attacks", attack_count)
     c3.metric("Attack %", f"{attack_percent:.2f}%")
+
+    # RISK LEVEL
+    if attack_percent > 50:
+        st.markdown("### 🔴 Risk Level: HIGH")
+    elif attack_percent > 20:
+        st.markdown("### 🟠 Risk Level: MEDIUM")
+    else:
+        st.markdown("### 🟢 Risk Level: LOW")
 
     st.markdown("---")
 
@@ -190,12 +211,10 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # ==============================
-    # MODEL EVALUATION
-    # ==============================
+    # MODEL EVAL
     st.subheader("📊 Model Evaluation")
 
-    with st.spinner("🔍 Evaluating model..."):
+    with st.spinner("Evaluating model..."):
         y_pred_real, y_score_real = evaluate_real()
 
     c1, c2, c3, c4 = st.columns(4)
@@ -204,44 +223,33 @@ if run or mode == "Real-Time":
     c3.metric("Recall", f"{recall_score(y_real, y_pred_real):.2f}")
     c4.metric("F1", f"{f1_score(y_real, y_pred_real):.2f}")
 
-    # ==============================
-    # SIDE BY SIDE FIXED
-    # ==============================
+    # SIDE BY SIDE
     col1, col2 = st.columns(2)
 
     with col1:
         st.subheader("Confusion Matrix")
         cm = confusion_matrix(y_real, y_pred_real)
-
         fig, ax = plt.subplots(figsize=(5,4))
         ax.imshow(cm)
-
         for i in range(2):
             for j in range(2):
                 ax.text(j, i, cm[i,j], ha='center', va='center')
-
         st.pyplot(fig, use_container_width=True)
 
     with col2:
         st.subheader("ROC Curve")
-
         fpr, tpr, _ = roc_curve(y_real, y_score_real)
         roc_auc = auc(fpr, tpr)
-
         fig, ax = plt.subplots(figsize=(5,4))
         ax.plot(fpr, tpr, label=f"AUC={roc_auc:.2f}")
         ax.plot([0,1],[0,1],'--')
         ax.legend()
-
         st.pyplot(fig, use_container_width=True)
 
     st.markdown("---")
 
-    # ==============================
     # DONUT
-    # ==============================
     st.subheader("📊 Distribution")
-
     fig, ax = plt.subplots(figsize=(4,4))
     ax.pie(
         [normal_count, attack_count],
@@ -256,9 +264,7 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # ==============================
     # LOGS
-    # ==============================
     df = pd.DataFrame({
         "ID": idx,
         "Score": scores,
