@@ -132,6 +132,7 @@ def simulate(sample_size):
 # ==============================
 # REAL EVAL
 # ==============================
+@st.cache_data
 def evaluate_real():
     iso_s = -iso.decision_function(X_real)
     lof_s = -lof.decision_function(X_real)
