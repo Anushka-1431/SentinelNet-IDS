@@ -24,11 +24,7 @@ st.set_page_config(page_title="SentinelNet IDS", layout="wide")
 st.markdown("""
 <style>
 body { background-color: #05080f; }
-
-h1 {
-    text-shadow: 0 0 15px #00f7ff;
-}
-
+h1 { text-shadow: 0 0 15px #00f7ff; }
 .stMetric {
     background: #0d1117;
     border: 1px solid #00f7ff;
@@ -36,7 +32,6 @@ h1 {
     border-radius: 12px;
     box-shadow: 0 0 15px rgba(0,255,255,0.4);
 }
-
 .stButton>button {
     background: black;
     border: 1px solid #00f7ff;
@@ -48,7 +43,17 @@ h1 {
 """, unsafe_allow_html=True)
 
 # ==============================
-# GOOGLE DRIVE LOADER (gdown)
+# 🔊 SOUND ALERT
+# ==============================
+def play_alert():
+    st.markdown("""
+    <audio autoplay>
+        <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
+    </audio>
+    """, unsafe_allow_html=True)
+
+# ==============================
+# GOOGLE DRIVE LOADER
 # ==============================
 def load_pkl_from_drive(file_id, filename):
     if not os.path.exists(filename):
@@ -173,6 +178,7 @@ if run or mode == "Real-Time":
 
     # 🚨 ALERT
     if attack_count > 0:
+        play_alert()
         st.markdown(f"""
         <div style="background:#ff0000;padding:15px;border-radius:10px;
         text-align:center;font-size:22px;color:white;animation:blink 1s infinite;">
@@ -195,7 +201,7 @@ if run or mode == "Real-Time":
     c2.metric("Attacks", attack_count)
     c3.metric("Attack %", f"{attack_percent:.2f}%")
 
-    # RISK LEVEL
+    # RISK
     if attack_percent > 50:
         st.markdown("### 🔴 Risk Level: HIGH")
     elif attack_percent > 20:
@@ -209,6 +215,24 @@ if run or mode == "Real-Time":
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
+    # 🌍 MAP
+    st.subheader("🌍 Live Attack Map")
+    map_df = pd.DataFrame({
+        "lat": np.random.uniform(-60, 60, len(pred)),
+        "lon": np.random.uniform(-180, 180, len(pred)),
+        "attack": pred
+    })
+    st.map(map_df[map_df["attack"] == 1])
+
+    # 📡 NETWORK
+    st.subheader("📡 Network Activity")
+    st.line_chart(pd.DataFrame({"Traffic": scores}))
+
+    # 🚨 SEVERITY
+    st.subheader("🚨 Attack Severity")
+    severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
+    st.bar_chart(pd.Series(severity).value_counts())
+
     st.markdown("---")
 
     # MODEL EVAL
@@ -217,50 +241,19 @@ if run or mode == "Real-Time":
     with st.spinner("Evaluating model..."):
         y_pred_real, y_score_real = evaluate_real()
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Accuracy", f"{accuracy_score(y_real, y_pred_real):.2f}")
-    c2.metric("Precision", f"{precision_score(y_real, y_pred_real):.2f}")
-    c3.metric("Recall", f"{recall_score(y_real, y_pred_real):.2f}")
-    c4.metric("F1", f"{f1_score(y_real, y_pred_real):.2f}")
-
-    # SIDE BY SIDE
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Confusion Matrix")
         cm = confusion_matrix(y_real, y_pred_real)
-        fig, ax = plt.subplots(figsize=(5,4))
+        fig, ax = plt.subplots()
         ax.imshow(cm)
-        for i in range(2):
-            for j in range(2):
-                ax.text(j, i, cm[i,j], ha='center', va='center')
-        st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig)
 
     with col2:
-        st.subheader("ROC Curve")
         fpr, tpr, _ = roc_curve(y_real, y_score_real)
-        roc_auc = auc(fpr, tpr)
-        fig, ax = plt.subplots(figsize=(5,4))
-        ax.plot(fpr, tpr, label=f"AUC={roc_auc:.2f}")
-        ax.plot([0,1],[0,1],'--')
-        ax.legend()
-        st.pyplot(fig, use_container_width=True)
-
-    st.markdown("---")
-
-    # DONUT
-    st.subheader("📊 Distribution")
-    fig, ax = plt.subplots(figsize=(4,4))
-    ax.pie(
-        [normal_count, attack_count],
-        autopct='%1.1f%%',
-        colors=["#00f7ff", "#ff4d4d"],
-        wedgeprops={'width':0.35}
-    )
-    st.pyplot(fig)
-
-    st.write(f"🔵 Normal: {normal_count}")
-    st.write(f"🔴 Attack: {attack_count}")
+        fig, ax = plt.subplots()
+        ax.plot(fpr, tpr)
+        st.pyplot(fig)
 
     st.markdown("---")
 
@@ -274,7 +267,6 @@ if run or mode == "Real-Time":
     st.dataframe(df.head(30))
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
-    # AUTO REFRESH
     if mode == "Real-Time":
         time.sleep(5)
         st.rerun()
