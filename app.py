@@ -195,7 +195,8 @@ if run or mode == "Real-Time":
     # ==============================
     st.subheader("📊 Model Evaluation")
 
-    y_pred_real, y_score_real = evaluate_real()
+    with st.spinner("🔍 Evaluating model..."):
+        y_pred_real, y_score_real = evaluate_real()
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Accuracy", f"{accuracy_score(y_real, y_pred_real):.2f}")
