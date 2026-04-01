@@ -41,7 +41,12 @@ def download_file_from_drive(file_id, destination):
 
 def load_pkl_from_drive(file_id, filename):
     download_file_from_drive(file_id, filename)
-    return joblib.load(filename)
+
+    try:
+        return joblib.load(filename)
+    except Exception:
+        st.error(f"❌ Failed to load {filename} — file may be corrupted or not downloaded correctly.")
+        st.stop()
 
 def load_csv_from_drive(file_id, filename):
     download_file_from_drive(file_id, filename)
