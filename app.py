@@ -11,51 +11,78 @@ import matplotlib.pyplot as plt
 import joblib
 import requests
 import time
+import os
 
 # ==============================
-# GOOGLE DRIVE LOADER
+# PAGE CONFIG
 # ==============================
-def load_pkl_from_drive(url, filename):
-    r = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(r.content)
+st.set_page_config(page_title="SentinelNet IDS", layout="wide")
+
+# ==============================
+# GOOGLE DRIVE DOWNLOADER (FIXED)
+# ==============================
+def download_file_from_drive(file_id, destination):
+    if os.path.exists(destination):
+        return
+
+    URL = "https://drive.google.com/uc?export=download"
+    session = requests.Session()
+
+    response = session.get(URL, params={'id': file_id}, stream=True)
+
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            response = session.get(URL, params={'id': file_id, 'confirm': value}, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(32768):
+            if chunk:
+                f.write(chunk)
+
+def load_pkl_from_drive(file_id, filename):
+    download_file_from_drive(file_id, filename)
     return joblib.load(filename)
 
-def load_csv_from_drive(url, filename):
-    r = requests.get(url)
-    with open(filename, "wb") as f:
-        f.write(r.content)
+def load_csv_from_drive(file_id, filename):
+    download_file_from_drive(file_id, filename)
     return pd.read_csv(filename)
 
 # ==============================
-# LOAD MODELS (LOCAL SMALL FILES)
+# LOAD MODELS
 # ==============================
-iso = joblib.load("iso_model.pkl")
-ocsvm = joblib.load("ocsvm_model.pkl")
-pca_model = joblib.load("pca_model.pkl")
-best_t = joblib.load("threshold.pkl")
+@st.cache_resource
+def load_models():
+    iso = joblib.load("iso_model.pkl")
+    ocsvm = joblib.load("ocsvm_model.pkl")
+    pca = joblib.load("pca_model.pkl")
+    t = joblib.load("threshold.pkl")
+
+    lof = load_pkl_from_drive("1WcOnd7FWSw3fHUNVS-7jmEWI2-ggWWfY", "lof_model.pkl")
+
+    return iso, ocsvm, pca, t, lof
+
+iso, ocsvm, pca_model, best_t, lof = load_models()
 
 # ==============================
-# LOAD LARGE FILES FROM DRIVE
+# LOAD DATA
 # ==============================
-lof = load_pkl_from_drive(
-    "https://drive.google.com/uc?id=1WcOnd7FWSw3fHUNVS-7jmEWI2-ggWWfY",
-    "lof_model.pkl"
-)
+@st.cache_data
+def load_data():
+    synthetic_df = load_csv_from_drive(
+        "1suz79KQkN4sbJT5n_B4vW844z06Lx04Y",
+        "synthetic_network_data.csv"
+    )
 
-synthetic_df = load_csv_from_drive(
-    "https://drive.google.com/uc?id=1suz79KQkN4sbJT5n_B4vW844z06Lx04Y",
-    "synthetic_network_data.csv"
-)
+    X_real = load_pkl_from_drive(
+        "1sLgVZFuHgyOlzbdnXhnEkCbEH6GcBk2E",
+        "X_real.pkl"
+    )
 
-X_real = load_pkl_from_drive(
-    "https://drive.google.com/uc?id=1sLgVZFuHgyOlzbdnXhnEkCbEH6GcBk2E",
-    "X_real.pkl"
-)
+    y_real = joblib.load("y_real.pkl")
 
-y_real = joblib.load("y_real.pkl")
+    return synthetic_df.values, X_real, y_real
 
-X_synthetic_scaled = synthetic_df.values
+X_synthetic_scaled, X_real, y_real = load_data()
 
 # ==============================
 # SESSION STATE
@@ -64,47 +91,40 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # ==============================
-# PAGE CONFIG
-# ==============================
-st.set_page_config(page_title="SentinelNet IDS", layout="wide")
-
-# ==============================
 # HEADER
 # ==============================
 st.markdown("""
 <h1 style='text-align:center; color:#00f7ff;'>🚨 SentinelNet IDS</h1>
-<p style='text-align:center; color:#aaa;'>AI-Powered Real-Time Intrusion Detection System</p>
+<p style='text-align:center; color:#aaa;'>AI-Powered Intrusion Detection System</p>
 <hr>
 """, unsafe_allow_html=True)
 
 # ==============================
 # SIMULATION
 # ==============================
-def simulate_ctgan(sample_size=1000):
+def simulate(sample_size):
+    idx = np.random.choice(len(X_synthetic_scaled), sample_size, replace=False)
+    X = X_synthetic_scaled[idx]
 
-    indices = np.random.choice(len(X_synthetic_scaled), sample_size, replace=False)
-    X_sample = X_synthetic_scaled[indices]
+    iso_s = -iso.decision_function(X)
+    lof_s = -lof.decision_function(X)
 
-    iso_s = -iso.decision_function(X_sample)
-    lof_s = -lof.decision_function(X_sample)
-
-    X_pca = pca_model.transform(X_sample)
+    X_pca = pca_model.transform(X)
     ocsvm_s = -ocsvm.decision_function(X_pca)
 
     iso_s = MinMaxScaler().fit_transform(iso_s.reshape(-1,1)).ravel()
     lof_s = MinMaxScaler().fit_transform(lof_s.reshape(-1,1)).ravel()
     ocsvm_s = MinMaxScaler().fit_transform(ocsvm_s.reshape(-1,1)).ravel()
 
-    score = (0.6*iso_s + 0.25*ocsvm_s + 0.15*lof_s)
+    score = 0.6*iso_s + 0.25*ocsvm_s + 0.15*lof_s
     pred = (score >= best_t).astype(int)
 
-    return pred, score, indices
+    return pred, score, idx
 
 # ==============================
-# EVALUATION
+# REAL EVAL
 # ==============================
 def evaluate_real():
-
     iso_s = -iso.decision_function(X_real)
     lof_s = -lof.decision_function(X_real)
 
@@ -115,7 +135,7 @@ def evaluate_real():
     lof_s = MinMaxScaler().fit_transform(lof_s.reshape(-1,1)).ravel()
     ocsvm_s = MinMaxScaler().fit_transform(ocsvm_s.reshape(-1,1)).ravel()
 
-    score = (0.6*iso_s + 0.25*ocsvm_s + 0.15*lof_s)
+    score = 0.6*iso_s + 0.25*ocsvm_s + 0.15*lof_s
     pred = (score >= best_t).astype(int)
 
     return pred, score
@@ -133,7 +153,7 @@ run = st.button("🚀 Run Detection")
 # ==============================
 if run or mode == "Real-Time":
 
-    pred, scores, idx = simulate_ctgan(sample_size)
+    pred, scores, idx = simulate(sample_size)
 
     attack_count = int(np.sum(pred))
     normal_count = int(np.sum(pred == 0))
@@ -168,7 +188,6 @@ if run or mode == "Real-Time":
 
     y_pred_real, y_score_real = evaluate_real()
 
-    # METRICS
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Accuracy", f"{accuracy_score(y_real, y_pred_real):.2f}")
     c2.metric("Precision", f"{precision_score(y_real, y_pred_real):.2f}")
@@ -176,32 +195,35 @@ if run or mode == "Real-Time":
     c4.metric("F1", f"{f1_score(y_real, y_pred_real):.2f}")
 
     # ==============================
-    # SIDE-BY-SIDE VISUALS
+    # SIDE BY SIDE FIXED
     # ==============================
     col1, col2 = st.columns(2)
 
-    # Confusion Matrix
     with col1:
         st.subheader("Confusion Matrix")
         cm = confusion_matrix(y_real, y_pred_real)
-        fig, ax = plt.subplots(figsize=(4,4))
+
+        fig, ax = plt.subplots(figsize=(5,4))
         ax.imshow(cm)
+
         for i in range(2):
             for j in range(2):
                 ax.text(j, i, cm[i,j], ha='center', va='center')
-        st.pyplot(fig)
 
-    # ROC Curve
+        st.pyplot(fig, use_container_width=True)
+
     with col2:
         st.subheader("ROC Curve")
+
         fpr, tpr, _ = roc_curve(y_real, y_score_real)
         roc_auc = auc(fpr, tpr)
 
-        fig, ax = plt.subplots(figsize=(4,4))
+        fig, ax = plt.subplots(figsize=(5,4))
         ax.plot(fpr, tpr, label=f"AUC={roc_auc:.2f}")
         ax.plot([0,1],[0,1],'--')
         ax.legend()
-        st.pyplot(fig)
+
+        st.pyplot(fig, use_container_width=True)
 
     st.markdown("---")
 
@@ -210,21 +232,17 @@ if run or mode == "Real-Time":
     # ==============================
     st.subheader("📊 Distribution")
 
-    col1, col2 = st.columns([2,1])
+    fig, ax = plt.subplots(figsize=(4,4))
+    ax.pie(
+        [normal_count, attack_count],
+        autopct='%1.1f%%',
+        colors=["#00f7ff", "#ff4d4d"],
+        wedgeprops={'width':0.35}
+    )
+    st.pyplot(fig)
 
-    with col1:
-        fig, ax = plt.subplots(figsize=(3,3))
-        ax.pie(
-            [normal_count, attack_count],
-            autopct='%1.1f%%',
-            colors=["#00f7ff", "#ff4d4d"],
-            wedgeprops={'width':0.35}
-        )
-        st.pyplot(fig)
-
-    with col2:
-        st.write(f"🔵 Normal: {normal_count}")
-        st.write(f"🔴 Attack: {attack_count}")
+    st.write(f"🔵 Normal: {normal_count}")
+    st.write(f"🔴 Attack: {attack_count}")
 
     st.markdown("---")
 
@@ -238,7 +256,6 @@ if run or mode == "Real-Time":
     })
 
     st.dataframe(df.head(30))
-
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
     # AUTO REFRESH
