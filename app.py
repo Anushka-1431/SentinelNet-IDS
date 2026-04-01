@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 import matplotlib.pyplot as plt
 import joblib
-import requests
+import gdown
 import time
 import os
 
@@ -39,17 +39,20 @@ def download_file_from_drive(file_id, destination):
             if chunk:
                 f.write(chunk)
 
-def load_pkl_from_drive(file_id, filename):
-    download_file_from_drive(file_id, filename)
+import gdown
+import os
 
-    try:
-        return joblib.load(filename)
-    except Exception:
-        st.error(f"❌ Failed to load {filename} — file may be corrupted or not downloaded correctly.")
-        st.stop()
+def load_pkl_from_drive(file_id, filename):
+    if not os.path.exists(filename):
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, filename, quiet=False)
+    return joblib.load(filename)
+
 
 def load_csv_from_drive(file_id, filename):
-    download_file_from_drive(file_id, filename)
+    if not os.path.exists(filename):
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, filename, quiet=False)
     return pd.read_csv(filename)
 
 # ==============================
