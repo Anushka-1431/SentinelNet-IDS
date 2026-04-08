@@ -216,13 +216,16 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # 🌍 MAP
-    st.subheader("🌍 Live Attack Map")
-    map_df = pd.DataFrame({
-        "lat": np.random.uniform(-60, 60, len(pred)),
-        "lon": np.random.uniform(-180, 180, len(pred)),
-        "attack": pred
-    })
-    st.map(map_df[map_df["attack"] == 1])
+   st.subheader("🌍 Live Attack Map")
+   num_points = max(1, attack_count * 5)
+   np.random.seed(int(time.time()))
+
+   attack_points = pd.DataFrame({
+       "lat": np.random.uniform(-60, 60, num_points),
+       "lon": np.random.uniform(-180, 180, num_points)
+   })
+
+   st.map(attack_points)
 
     # 📡 NETWORK
     st.subheader("📡 Network Activity")
