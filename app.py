@@ -241,7 +241,7 @@ if run or mode == "Real-Time":
         initial_view_state=pdk.ViewState(
             latitude=15,
             longitude=0,
-            zoom=0.7,
+            zoom=0.4,
             pitch=30,
         ),
         map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
