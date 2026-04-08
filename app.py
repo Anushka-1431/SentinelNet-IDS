@@ -279,14 +279,29 @@ if run or mode == "Real-Time":
 
     # LOGS
     df = pd.DataFrame({
-        "ID": idx,
-        "Score": scores,
-        "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
+    "ID": idx,
+    "Score": scores,
+    "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
+})
+
+styled = df.head(30).style \
+    .format({"Score": "{:.4f}"}) \
+    .set_properties(**{
+        'text-align': 'center',
+        'color': 'white',
+        'background-color': '#0d1117',
+        'border': '1px solid #00f7ff'
     })
 
-    styled
-    st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
-    if mode == "Real-Time":
-        time.sleep(5)
-        st.rerun()
+styled.set_table_styles([
+    {'selector': 'th', 'props': [
+        ('text-align', 'center'),
+        ('color', '#00f7ff'),
+        ('font-size', '14px')
+    ]}
+])
+
+st.dataframe(styled, use_container_width=True)
+
+st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
