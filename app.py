@@ -277,31 +277,32 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # LOGS
+       # ==============================
+    # LOGS (FIXED)
+    # ==============================
     df = pd.DataFrame({
-    "ID": idx,
-    "Score": scores,
-    "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
-})
-
-styled = df.head(30).style \
-    .format({"Score": "{:.4f}"}) \
-    .set_properties(**{
-        'text-align': 'center',
-        'color': 'white',
-        'background-color': '#0d1117',
-        'border': '1px solid #00f7ff'
+        "ID": idx,
+        "Score": scores,
+        "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
     })
 
+    styled = df.head(30).style \
+        .format({"Score": "{:.4f}"}) \
+        .set_properties(**{
+            'text-align': 'center',
+            'color': 'white',
+            'background-color': '#0d1117',
+            'border': '1px solid #00f7ff'
+        })
 
-styled.set_table_styles([
-    {'selector': 'th', 'props': [
-        ('text-align', 'center'),
-        ('color', '#00f7ff'),
-        ('font-size', '14px')
-    ]}
-])
+    styled = styled.set_table_styles([
+        {'selector': 'th', 'props': [
+            ('text-align', 'center'),
+            ('color', '#00f7ff'),
+            ('font-size', '14px')
+        ]}
+    ])
 
-st.dataframe(styled, use_container_width=True)
+    st.dataframe(styled, use_container_width=True)
 
-st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
+    st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
