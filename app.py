@@ -12,6 +12,7 @@ import joblib
 import gdown
 import time
 import os
+import pydeck as pdk
 
 # ==============================
 # PAGE CONFIG
@@ -19,28 +20,40 @@ import os
 st.set_page_config(page_title="SentinelNet IDS", layout="wide")
 
 # ==============================
-# 🔥 UI STYLE
+# 🔥 MATRIX UI STYLE
 # ==============================
 st.markdown("""
 <style>
-body { background-color: #05080f; }
-h1 { text-shadow: 0 0 15px #00f7ff; }
+body {
+    background-color: black;
+    color: #00ffcc;
+    font-family: monospace;
+}
+h1 {
+    text-shadow: 0 0 20px #00f7ff, 0 0 40px #00f7ff;
+}
 .stMetric {
-    background: #0d1117;
+    background: #020617;
     border: 1px solid #00f7ff;
     padding: 15px;
     border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0,255,255,0.5);
 }
 .stButton>button {
     background: black;
     border: 1px solid #00f7ff;
     color: #00f7ff;
+    border-radius: 10px;
+}
+[data-testid="stDataFrame"] {
+    border: 1px solid #00f7ff;
+    box-shadow: 0 0 15px rgba(0,255,255,0.3);
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🔊 ALERT SOUND
+# ALERT SOUND
 # ==============================
 def play_alert():
     st.markdown("""
@@ -191,11 +204,9 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # ==============================
-    # 🌍 REAL-TIME ATTACK MAP
+    # 🌍 PYDECK CYBER MAP
     # ==============================
     st.subheader("🌍 Real-Time Cyber Attack Map")
-
-    np.random.seed(int(time.time()))
 
     regions = {
         "USA": (37.77, -122.41),
@@ -208,57 +219,70 @@ if run or mode == "Real-Time":
         "Australia": (-33.86, 151.20)
     }
 
-    num_points = max(10, attack_count * 8)
-
-    latitudes, longitudes = [], []
-    region_list = list(regions.values())
-
-    for _ in range(num_points):
-        base = region_list[np.random.randint(0, len(region_list))]
-        latitudes.append(base[0] + np.random.normal(0, 2))
-        longitudes.append(base[1] + np.random.normal(0, 2))
-
-    attack_points = pd.DataFrame({"lat": latitudes, "lon": longitudes})
-    st.map(attack_points)
-
-    # ==============================
-    # 🌐 ATTACK FLOW LINES
-    # ==============================
-    st.subheader("🌐 Attack Flow (Source → Target)")
-
     region_names = list(regions.keys())
-    flows = []
+    np.random.seed(int(time.time()))
 
-    for _ in range(min(20, attack_count + 5)):
+    points = []
+    for _ in range(max(20, attack_count * 10)):
+        r = np.random.choice(region_names)
+        lat, lon = regions[r]
+
+        points.append({
+            "lat": lat + np.random.normal(0, 2),
+            "lon": lon + np.random.normal(0, 2),
+            "size": np.random.randint(50000, 150000)
+        })
+
+    points_df = pd.DataFrame(points)
+
+    flows = []
+    for _ in range(min(30, attack_count + 10)):
         src = np.random.choice(region_names)
         dst = np.random.choice(region_names)
 
         if src != dst:
-            flows.append({"Source": src, "Target": dst})
+            src_lat, src_lon = regions[src]
+            dst_lat, dst_lon = regions[dst]
+
+            flows.append({
+                "from_lat": src_lat,
+                "from_lon": src_lon,
+                "to_lat": dst_lat,
+                "to_lon": dst_lon
+            })
 
     flow_df = pd.DataFrame(flows)
-    st.dataframe(flow_df)
 
-    st.subheader("📊 Attack Flow Intensity")
-    flow_counts = flow_df.groupby("Source").size()
-    st.bar_chart(flow_counts)
+    layer_points = pdk.Layer(
+        "ScatterplotLayer",
+        data=points_df,
+        get_position='[lon, lat]',
+        get_radius="size",
+        get_color='[0, 255, 255, 160]'
+    )
 
-    st.markdown("---")
+    layer_lines = pdk.Layer(
+        "ArcLayer",
+        data=flow_df,
+        get_source_position='[from_lon, from_lat]',
+        get_target_position='[to_lon, to_lat]',
+        get_source_color='[255, 0, 0, 160]',
+        get_target_color='[0, 255, 255, 160]',
+        get_width=5
+    )
 
-    # NETWORK
-    st.subheader("📡 Network Activity")
-    st.line_chart(pd.DataFrame({"Traffic": scores}))
+    view_state = pdk.ViewState(latitude=20, longitude=0, zoom=1.2)
 
-    # SEVERITY
-    st.subheader("🚨 Attack Severity")
-    severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
-    st.bar_chart(pd.Series(severity).value_counts())
+    st.pydeck_chart(pdk.Deck(
+        layers=[layer_points, layer_lines],
+        initial_view_state=view_state,
+        map_style='mapbox://styles/mapbox/dark-v10'
+    ))
 
     st.markdown("---")
 
     # MODEL EVAL
     st.subheader("📊 Model Evaluation")
-
     y_pred_real, y_score_real = evaluate_real()
 
     col1, col2 = st.columns(2)
@@ -277,32 +301,16 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-       # ==============================
-    # LOGS (FIXED)
-    # ==============================
+    # LOGS
     df = pd.DataFrame({
         "ID": idx,
         "Score": scores,
         "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
     })
 
-    styled = df.head(30).style \
-        .format({"Score": "{:.4f}"}) \
-        .set_properties(**{
-            'text-align': 'center',
-            'color': 'white',
-            'background-color': '#0d1117',
-            'border': '1px solid #00f7ff'
-        })
-
-    styled = styled.set_table_styles([
-        {'selector': 'th', 'props': [
-            ('text-align', 'center'),
-            ('color', '#00f7ff'),
-            ('font-size', '14px')
-        ]}
-    ])
-
-    st.dataframe(styled, use_container_width=True)
-
+    st.dataframe(df.head(30), use_container_width=True)
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
+
+    if mode == "Real-Time":
+        time.sleep(5)
+        st.rerun()
