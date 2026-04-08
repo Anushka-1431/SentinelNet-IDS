@@ -46,7 +46,7 @@ h1 {
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🔊 ALERT SOUND
+# ALERT SOUND
 # ==============================
 def play_alert():
     st.markdown("""
@@ -196,9 +196,9 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # ==============================
-    # 🌍 CYBER MAP
+    # 🌍 CYBER ATTACK MAP
     # ==============================
-    st.subheader("🌍 Real-Time Cyber Attack Map")
+    st.subheader("🌍 Live Cyber Attack Map")
 
     regions = {
         "USA": (37.77, -122.41),
@@ -214,57 +214,58 @@ if run or mode == "Real-Time":
     region_names = list(regions.keys())
     np.random.seed(int(time.time()))
 
-    points = []
-    for region, (lat, lon) in regions.items():
-        for _ in range(np.random.randint(8, 20)):
-            points.append({
-                "lat": lat + np.random.normal(0, 1.2),
-                "lon": lon + np.random.normal(0, 1.2),
-                "size": np.random.randint(60000, 120000)
-            })
-
     flows = []
-    for _ in range(min(10, attack_count + 3)):
+    for _ in range(min(12, max(5, attack_count))):
         src, dst = np.random.choice(region_names, 2, replace=False)
         flows.append({
             "from_lat": regions[src][0],
             "from_lon": regions[src][1],
             "to_lat": regions[dst][0],
-            "to_lon": regions[dst][1]
+            "to_lon": regions[dst][1],
+            "intensity": np.random.randint(1, 5)
         })
 
+    flow_df = pd.DataFrame(flows)
+
+    arc_layer = pdk.Layer(
+        "ArcLayer",
+        data=flow_df,
+        get_source_position='[from_lon, from_lat]',
+        get_target_position='[to_lon, to_lat]',
+        get_source_color='[255, 50, 50, 180]',
+        get_target_color='[0, 255, 255, 180]',
+        get_width="intensity * 1.5",
+        great_circle=True
+    )
+
+    node_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=[{"lat": v[0], "lon": v[1]} for v in regions.values()],
+        get_position='[lon, lat]',
+        get_radius=120000,
+        get_fill_color='[0,255,255,120]'
+    )
+
     st.pydeck_chart(pdk.Deck(
-        layers=[
-            pdk.Layer("ScatterplotLayer", data=points, get_position='[lon, lat]', get_radius="size", get_fill_color='[0,255,255,80]'),
-            pdk.Layer("ArcLayer", data=flows, get_source_position='[from_lon, from_lat]',
-                      get_target_position='[to_lon, to_lat]',
-                      get_source_color='[255,80,80,180]', get_target_color='[0,255,255,180]',
-                      get_width=3)
-        ],
-        initial_view_state=pdk.ViewState(latitude=25, longitude=10, zoom=1.5, pitch=40),
-        map_style="mapbox://styles/mapbox/dark-v11"
+        layers=[arc_layer, node_layer],
+        initial_view_state=pdk.ViewState(latitude=20, longitude=0, zoom=1.2, pitch=25),
+        map_style="mapbox://styles/mapbox/dark-v10"
     ))
 
     st.markdown("---")
 
-    # ==============================
-    # 📡 NETWORK ACTIVITY
-    # ==============================
+    # NETWORK
     st.subheader("📡 Network Activity")
     st.line_chart(pd.DataFrame({"Traffic Score": scores}))
 
-    # ==============================
-    # 🚨 ATTACK SEVERITY
-    # ==============================
+    # SEVERITY
     st.subheader("🚨 Attack Severity")
     severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
     st.bar_chart(pd.Series(severity).value_counts())
 
     st.markdown("---")
 
-    # ==============================
-    # MODEL EVALUATION
-    # ==============================
+    # MODEL EVAL
     st.subheader("📊 Model Evaluation")
     y_pred_real, y_score_real = evaluate_real()
 
@@ -282,9 +283,7 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # ==============================
     # LOGS
-    # ==============================
     df = pd.DataFrame({
         "ID": idx,
         "Score": scores,
