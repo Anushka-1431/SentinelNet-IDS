@@ -196,7 +196,7 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # ==============================
-    # 🌍 REAL-TIME CYBER MAP
+    # 🌍 PROFESSIONAL CYBER MAP
     # ==============================
     st.subheader("🌍 Real-Time Cyber Attack Map")
 
@@ -214,22 +214,21 @@ if run or mode == "Real-Time":
     region_names = list(regions.keys())
     np.random.seed(int(time.time()))
 
-    # POINTS
+    # CLEAN CLUSTERS
     points = []
-    for _ in range(max(15, attack_count * 6)):
-        r = np.random.choice(region_names)
-        lat, lon = regions[r]
-        points.append({
-            "lat": lat + np.random.normal(0, 4),
-            "lon": lon + np.random.normal(0, 4),
-            "size": np.random.randint(80000, 200000)
-        })
+    for region, (lat, lon) in regions.items():
+        for _ in range(np.random.randint(8, 20)):
+            points.append({
+                "lat": lat + np.random.normal(0, 1.2),
+                "lon": lon + np.random.normal(0, 1.2),
+                "size": np.random.randint(60000, 120000)
+            })
 
     points_df = pd.DataFrame(points)
 
-    # FLOWS
+    # FLOW LINES
     flows = []
-    for _ in range(min(15, attack_count + 5)):
+    for _ in range(min(10, attack_count + 3)):
         src, dst = np.random.choice(region_names, 2, replace=False)
         flows.append({
             "from_lat": regions[src][0],
@@ -240,13 +239,12 @@ if run or mode == "Real-Time":
 
     flow_df = pd.DataFrame(flows)
 
-    # MAP LAYERS
     layer_points = pdk.Layer(
         "ScatterplotLayer",
         data=points_df,
         get_position='[lon, lat]',
         get_radius="size",
-        get_color='[0, 255, 255, 120]'
+        get_fill_color='[0, 255, 255, 80]'
     )
 
     layer_lines = pdk.Layer(
@@ -254,15 +252,18 @@ if run or mode == "Real-Time":
         data=flow_df,
         get_source_position='[from_lon, from_lat]',
         get_target_position='[to_lon, to_lat]',
-        get_source_color='[255, 0, 0]',
-        get_target_color='[0, 255, 255]',
-        get_width=3
+        get_source_color='[255, 80, 80, 180]',
+        get_target_color='[0, 255, 255, 180]',
+        get_width=3,
+        great_circle=True
     )
+
+    view_state = pdk.ViewState(latitude=25, longitude=10, zoom=1.5, pitch=40)
 
     st.pydeck_chart(pdk.Deck(
         layers=[layer_points, layer_lines],
-        initial_view_state=pdk.ViewState(latitude=20, longitude=0, zoom=1.2),
-        map_style='mapbox://styles/mapbox/dark-v10'
+        initial_view_state=view_state,
+        map_style="mapbox://styles/mapbox/dark-v11"
     ))
 
     st.markdown("---")
