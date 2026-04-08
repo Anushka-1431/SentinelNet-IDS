@@ -196,7 +196,7 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # ==============================
-    # 🌍 PROFESSIONAL CYBER MAP
+    # 🌍 CYBER MAP
     # ==============================
     st.subheader("🌍 Real-Time Cyber Attack Map")
 
@@ -214,7 +214,6 @@ if run or mode == "Real-Time":
     region_names = list(regions.keys())
     np.random.seed(int(time.time()))
 
-    # CLEAN CLUSTERS
     points = []
     for region, (lat, lon) in regions.items():
         for _ in range(np.random.randint(8, 20)):
@@ -224,9 +223,6 @@ if run or mode == "Real-Time":
                 "size": np.random.randint(60000, 120000)
             })
 
-    points_df = pd.DataFrame(points)
-
-    # FLOW LINES
     flows = []
     for _ in range(min(10, attack_count + 3)):
         src, dst = np.random.choice(region_names, 2, replace=False)
@@ -237,74 +233,45 @@ if run or mode == "Real-Time":
             "to_lon": regions[dst][1]
         })
 
-    flow_df = pd.DataFrame(flows)
-
-    layer_points = pdk.Layer(
-        "ScatterplotLayer",
-        data=points_df,
-        get_position='[lon, lat]',
-        get_radius="size",
-        get_fill_color='[0, 255, 255, 80]'
-    )
-
-    layer_lines = pdk.Layer(
-        "ArcLayer",
-        data=flow_df,
-        get_source_position='[from_lon, from_lat]',
-        get_target_position='[to_lon, to_lat]',
-        get_source_color='[255, 80, 80, 180]',
-        get_target_color='[0, 255, 255, 180]',
-        get_width=3,
-        great_circle=True
-    )
-
-    view_state = pdk.ViewState(latitude=25, longitude=10, zoom=1.5, pitch=40)
-
     st.pydeck_chart(pdk.Deck(
-        layers=[layer_points, layer_lines],
-        initial_view_state=view_state,
+        layers=[
+            pdk.Layer("ScatterplotLayer", data=points, get_position='[lon, lat]', get_radius="size", get_fill_color='[0,255,255,80]'),
+            pdk.Layer("ArcLayer", data=flows, get_source_position='[from_lon, from_lat]',
+                      get_target_position='[to_lon, to_lat]',
+                      get_source_color='[255,80,80,180]', get_target_color='[0,255,255,180]',
+                      get_width=3)
+        ],
+        initial_view_state=pdk.ViewState(latitude=25, longitude=10, zoom=1.5, pitch=40),
         map_style="mapbox://styles/mapbox/dark-v11"
     ))
 
     st.markdown("---")
 
     # ==============================
-# 📡 NETWORK ACTIVITY
-# ==============================
-st.subheader("📡 Network Activity")
+    # 📡 NETWORK ACTIVITY
+    # ==============================
+    st.subheader("📡 Network Activity")
+    st.line_chart(pd.DataFrame({"Traffic Score": scores}))
 
-network_df = pd.DataFrame({
-    "Traffic Score": scores
-})
+    # ==============================
+    # 🚨 ATTACK SEVERITY
+    # ==============================
+    st.subheader("🚨 Attack Severity")
+    severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
+    st.bar_chart(pd.Series(severity).value_counts())
 
-st.line_chart(network_df)
+    st.markdown("---")
 
-# ==============================
-# 🚨 ATTACK SEVERITY
-# ==============================
-st.subheader("🚨 Attack Severity Distribution")
-
-severity = [
-    "HIGH" if s > 0.8 else
-    "MEDIUM" if s > 0.5 else
-    "LOW"
-    for s in scores
-]
-
-severity_counts = pd.Series(severity).value_counts()
-
-st.bar_chart(severity_counts)
-
-    # MODEL EVAL
+    # ==============================
+    # MODEL EVALUATION
+    # ==============================
     st.subheader("📊 Model Evaluation")
     y_pred_real, y_score_real = evaluate_real()
 
     col1, col2 = st.columns(2)
-
     with col1:
-        cm = confusion_matrix(y_real, y_pred_real)
         fig, ax = plt.subplots()
-        ax.imshow(cm)
+        ax.imshow(confusion_matrix(y_real, y_pred_real))
         st.pyplot(fig)
 
     with col2:
@@ -315,7 +282,9 @@ st.bar_chart(severity_counts)
 
     st.markdown("---")
 
+    # ==============================
     # LOGS
+    # ==============================
     df = pd.DataFrame({
         "ID": idx,
         "Score": scores,
@@ -323,7 +292,6 @@ st.bar_chart(severity_counts)
     })
 
     st.dataframe(df.head(30), use_container_width=True)
-
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
     if mode == "Real-Time":
