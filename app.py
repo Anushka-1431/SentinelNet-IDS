@@ -46,7 +46,7 @@ h1 {
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🔊 ALERT SOUND
+# ALERT SOUND
 # ==============================
 def play_alert():
     st.markdown("""
@@ -196,93 +196,73 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # ==============================
-# 🌍 FIXED REAL CYBER MAP
-# ==============================
-st.subheader("🌍 Live Cyber Attack Map")
+    # 🌍 CYBER MAP (FINAL FIX)
+    # ==============================
+    st.subheader("🌍 Live Cyber Attack Map")
 
-regions = {
-    "USA": (37.77, -122.41),
-    "India": (28.61, 77.20),
-    "China": (31.23, 121.47),
-    "Russia": (55.75, 37.61),
-    "Germany": (52.52, 13.40),
-    "UK": (51.50, -0.12),
-    "Brazil": (-23.55, -46.63),
-    "Australia": (-33.86, 151.20)
-}
+    regions = {
+        "USA": (37.77, -122.41),
+        "India": (28.61, 77.20),
+        "China": (31.23, 121.47),
+        "Russia": (55.75, 37.61),
+        "Germany": (52.52, 13.40),
+        "UK": (51.50, -0.12),
+        "Brazil": (-23.55, -46.63),
+        "Australia": (-33.86, 151.20)
+    }
 
-region_names = list(regions.keys())
-np.random.seed(int(time.time()))
+    region_names = list(regions.keys())
+    np.random.seed(int(time.time()))
 
-flows = []
-for _ in range(max(10, attack_count * 2)):
-    src, dst = np.random.choice(region_names, 2, replace=False)
+    flows = []
+    for _ in range(max(10, attack_count * 2)):
+        src, dst = np.random.choice(region_names, 2, replace=False)
+        flows.append({
+            "from_lon": regions[src][1],
+            "from_lat": regions[src][0],
+            "to_lon": regions[dst][1],
+            "to_lat": regions[dst][0]
+        })
 
-    flows.append({
-        "from_lon": regions[src][1],
-        "from_lat": regions[src][0],
-        "to_lon": regions[dst][1],
-        "to_lat": regions[dst][0]
-    })
+    flow_df = pd.DataFrame(flows)
 
-flow_df = pd.DataFrame(flows)
+    arc_layer = pdk.Layer(
+        "ArcLayer",
+        data=flow_df,
+        get_source_position='[from_lon, from_lat]',
+        get_target_position='[to_lon, to_lat]',
+        get_source_color=[255, 120, 120],
+        get_target_color=[255, 255, 120],
+        get_width=2,
+    )
 
-# 🔥 Arc Layer
-arc_layer = pdk.Layer(
-    "ArcLayer",
-    data=flow_df,
-    get_source_position='[from_lon, from_lat]',
-    get_target_position='[to_lon, to_lat]',
-    get_source_color=[255, 100, 100],
-    get_target_color=[0, 255, 200],
-    get_width=2,
-)
+    deck = pdk.Deck(
+        layers=[arc_layer],
+        initial_view_state=pdk.ViewState(
+            latitude=15,
+            longitude=0,
+            zoom=0.7,
+            pitch=30,
+        ),
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+    )
 
-# 🔥 Nodes
-node_df = pd.DataFrame([
-    {"lat": v[0], "lon": v[1]} for v in regions.values()
-])
-
-node_layer = pdk.Layer(
-    "ScatterplotLayer",
-    data=node_df,
-    get_position='[lon, lat]',
-    get_radius=200000,
-    get_fill_color=[255, 255, 0],
-)
-
-# 🔥 FINAL MAP (THIS FIXES EVERYTHING)
-deck = pdk.Deck(
-    layers=[arc_layer, node_layer],
-    initial_view_state=pdk.ViewState(
-        latitude=20,
-        longitude=0,
-        zoom=1,
-        pitch=30,
-    ),
-    map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"  # ✅ NO TOKEN NEEDED
-)
-
-st.pydeck_chart(deck, use_container_width=True)
+    st.pydeck_chart(deck, use_container_width=True)
 
     st.markdown("---")
 
-    # ==============================
-    # 📡 NETWORK ACTIVITY
-    # ==============================
+    # NETWORK
     st.subheader("📡 Network Activity")
     st.line_chart(pd.DataFrame({"Traffic Score": scores}))
 
-    # ==============================
-    # 🚨 ATTACK SEVERITY
-    # ==============================
+    # SEVERITY
     st.subheader("🚨 Attack Severity")
     severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
     st.bar_chart(pd.Series(severity).value_counts())
 
     st.markdown("---")
 
-    # MODEL EVAL
+    # MODEL
     st.subheader("📊 Model Evaluation")
     y_pred_real, y_score_real = evaluate_real()
 
