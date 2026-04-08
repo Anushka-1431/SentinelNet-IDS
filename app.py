@@ -249,7 +249,7 @@ if run or mode == "Real-Time":
     st.pydeck_chart(pdk.Deck(
         layers=[arc_layer, node_layer],
         initial_view_state=pdk.ViewState(latitude=20, longitude=0, zoom=1.2, pitch=25),
-        map_style="mapbox://styles/mapbox/dark-v10"
+        map_style="light"
     ))
 
     st.markdown("---")
