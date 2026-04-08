@@ -268,6 +268,33 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
+    # ==============================
+# 📡 NETWORK ACTIVITY
+# ==============================
+st.subheader("📡 Network Activity")
+
+network_df = pd.DataFrame({
+    "Traffic Score": scores
+})
+
+st.line_chart(network_df)
+
+# ==============================
+# 🚨 ATTACK SEVERITY
+# ==============================
+st.subheader("🚨 Attack Severity Distribution")
+
+severity = [
+    "HIGH" if s > 0.8 else
+    "MEDIUM" if s > 0.5 else
+    "LOW"
+    for s in scores
+]
+
+severity_counts = pd.Series(severity).value_counts()
+
+st.bar_chart(severity_counts)
+
     # MODEL EVAL
     st.subheader("📊 Model Evaluation")
     y_pred_real, y_score_real = evaluate_real()
