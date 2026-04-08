@@ -203,81 +203,93 @@ if run or mode == "Real-Time":
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
-    # ==============================
-    # 🌍 PYDECK CYBER MAP
-    # ==============================
-    st.subheader("🌍 Real-Time Cyber Attack Map")
+   # ==============================
+# 🌍 CYBER MAP
+# ==============================
+st.subheader("🌍 Real-Time Cyber Attack Map")
 
-    regions = {
-        "USA": (37.77, -122.41),
-        "India": (28.61, 77.20),
-        "UK": (51.50, -0.12),
-        "Germany": (52.52, 13.40),
-        "Russia": (55.75, 37.61),
-        "China": (31.23, 121.47),
-        "Brazil": (-23.55, -46.63),
-        "Australia": (-33.86, 151.20)
-    }
+regions = {
+    "USA": (37.77, -122.41),
+    "India": (28.61, 77.20),
+    "UK": (51.50, -0.12),
+    "Germany": (52.52, 13.40),
+    "Russia": (55.75, 37.61),
+    "China": (31.23, 121.47),
+    "Brazil": (-23.55, -46.63),
+    "Australia": (-33.86, 151.20)
+}
 
-    region_names = list(regions.keys())
-    np.random.seed(int(time.time()))
+region_names = list(regions.keys())
 
-    points = []
-    for _ in range(max(20, attack_count * 10)):
-        r = np.random.choice(region_names)
-        lat, lon = regions[r]
+np.random.seed(int(time.time()))
 
-        points.append({
-            "lat": lat + np.random.normal(0, 2),
-            "lon": lon + np.random.normal(0, 2),
-            "size": np.random.randint(50000, 150000)
+# 🔥 BETTER SPREAD POINTS
+points = []
+for _ in range(max(15, attack_count * 6)):
+    r = np.random.choice(region_names)
+    lat, lon = regions[r]
+
+    points.append({
+        "lat": lat + np.random.normal(0, 4),   # 👈 more spread
+        "lon": lon + np.random.normal(0, 4),
+        "size": np.random.randint(80000, 200000)
+    })
+
+points_df = pd.DataFrame(points)
+
+# 🌐 CLEANER FLOW LINES
+flows = []
+for _ in range(min(15, attack_count + 5)):  # 👈 reduced lines
+    src = np.random.choice(region_names)
+    dst = np.random.choice(region_names)
+
+    if src != dst:
+        src_lat, src_lon = regions[src]
+        dst_lat, dst_lon = regions[dst]
+
+        flows.append({
+            "from_lat": src_lat,
+            "from_lon": src_lon,
+            "to_lat": dst_lat,
+            "to_lon": dst_lon
         })
 
-    points_df = pd.DataFrame(points)
+flow_df = pd.DataFrame(flows)
 
-    flows = []
-    for _ in range(min(30, attack_count + 10)):
-        src = np.random.choice(region_names)
-        dst = np.random.choice(region_names)
+# 🔥 GLOW POINTS
+layer_points = pdk.Layer(
+    "ScatterplotLayer",
+    data=points_df,
+    get_position='[lon, lat]',
+    get_radius="size",
+    get_color='[0, 255, 255, 120]',  # 👈 transparency glow
+    pickable=True
+)
 
-        if src != dst:
-            src_lat, src_lon = regions[src]
-            dst_lat, dst_lon = regions[dst]
+# 🌐 SMOOTH ARCS
+layer_lines = pdk.Layer(
+    "ArcLayer",
+    data=flow_df,
+    get_source_position='[from_lon, from_lat]',
+    get_target_position='[to_lon, to_lat]',
+    get_source_color='[255, 0, 0, 180]',
+    get_target_color='[0, 255, 255, 180]',
+    get_width=3,
+    great_circle=True   # 👈 smoother curves
+)
 
-            flows.append({
-                "from_lat": src_lat,
-                "from_lon": src_lon,
-                "to_lat": dst_lat,
-                "to_lon": dst_lon
-            })
+view_state = pdk.ViewState(
+    latitude=20,
+    longitude=0,
+    zoom=1.2,
+    pitch=25
+)
 
-    flow_df = pd.DataFrame(flows)
-
-    layer_points = pdk.Layer(
-        "ScatterplotLayer",
-        data=points_df,
-        get_position='[lon, lat]',
-        get_radius="size",
-        get_color='[0, 255, 255, 160]'
-    )
-
-    layer_lines = pdk.Layer(
-        "ArcLayer",
-        data=flow_df,
-        get_source_position='[from_lon, from_lat]',
-        get_target_position='[to_lon, to_lat]',
-        get_source_color='[255, 0, 0, 160]',
-        get_target_color='[0, 255, 255, 160]',
-        get_width=5
-    )
-
-    view_state = pdk.ViewState(latitude=20, longitude=0, zoom=1.2)
-
-    st.pydeck_chart(pdk.Deck(
-        layers=[layer_points, layer_lines],
-        initial_view_state=view_state,
-        map_style='mapbox://styles/mapbox/dark-v10'
-    ))
+st.pydeck_chart(pdk.Deck(
+    layers=[layer_points, layer_lines],
+    initial_view_state=view_state,
+    map_style='mapbox://styles/mapbox/dark-v10'
+))
 
     st.markdown("---")
 
