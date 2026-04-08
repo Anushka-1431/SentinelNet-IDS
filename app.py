@@ -190,24 +190,66 @@ if run or mode == "Real-Time":
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
-    # 🌍 MAP (FIXED)
-    st.subheader("🌍 Live Attack Map")
+    # ==============================
+    # 🌍 REAL-TIME ATTACK MAP
+    # ==============================
+    st.subheader("🌍 Real-Time Cyber Attack Map")
 
-    num_points = max(1, attack_count * 5)
     np.random.seed(int(time.time()))
 
-    attack_points = pd.DataFrame({
-        "lat": np.random.uniform(-60, 60, num_points),
-        "lon": np.random.uniform(-180, 180, num_points)
-    })
+    regions = {
+        "USA": (37.77, -122.41),
+        "India": (28.61, 77.20),
+        "UK": (51.50, -0.12),
+        "Germany": (52.52, 13.40),
+        "Russia": (55.75, 37.61),
+        "China": (31.23, 121.47),
+        "Brazil": (-23.55, -46.63),
+        "Australia": (-33.86, 151.20)
+    }
 
+    num_points = max(10, attack_count * 8)
+
+    latitudes, longitudes = [], []
+    region_list = list(regions.values())
+
+    for _ in range(num_points):
+        base = region_list[np.random.randint(0, len(region_list))]
+        latitudes.append(base[0] + np.random.normal(0, 2))
+        longitudes.append(base[1] + np.random.normal(0, 2))
+
+    attack_points = pd.DataFrame({"lat": latitudes, "lon": longitudes})
     st.map(attack_points)
 
-    # 📡 NETWORK
+    # ==============================
+    # 🌐 ATTACK FLOW LINES
+    # ==============================
+    st.subheader("🌐 Attack Flow (Source → Target)")
+
+    region_names = list(regions.keys())
+    flows = []
+
+    for _ in range(min(20, attack_count + 5)):
+        src = np.random.choice(region_names)
+        dst = np.random.choice(region_names)
+
+        if src != dst:
+            flows.append({"Source": src, "Target": dst})
+
+    flow_df = pd.DataFrame(flows)
+    st.dataframe(flow_df)
+
+    st.subheader("📊 Attack Flow Intensity")
+    flow_counts = flow_df.groupby("Source").size()
+    st.bar_chart(flow_counts)
+
+    st.markdown("---")
+
+    # NETWORK
     st.subheader("📡 Network Activity")
     st.line_chart(pd.DataFrame({"Traffic": scores}))
 
-    # 🚨 SEVERITY
+    # SEVERITY
     st.subheader("🚨 Attack Severity")
     severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
     st.bar_chart(pd.Series(severity).value_counts())
@@ -217,20 +259,17 @@ if run or mode == "Real-Time":
     # MODEL EVAL
     st.subheader("📊 Model Evaluation")
 
-    with st.spinner("Evaluating model..."):
-        y_pred_real, y_score_real = evaluate_real()
+    y_pred_real, y_score_real = evaluate_real()
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Confusion Matrix")
         cm = confusion_matrix(y_real, y_pred_real)
         fig, ax = plt.subplots()
         ax.imshow(cm)
         st.pyplot(fig)
 
     with col2:
-        st.subheader("ROC Curve")
         fpr, tpr, _ = roc_curve(y_real, y_score_real)
         fig, ax = plt.subplots()
         ax.plot(fpr, tpr)
