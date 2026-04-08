@@ -284,7 +284,7 @@ if run or mode == "Real-Time":
         "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
     })
 
-    st.dataframe(df.head(30))
+    styled
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
     if mode == "Real-Time":
