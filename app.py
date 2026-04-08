@@ -19,7 +19,7 @@ import os
 st.set_page_config(page_title="SentinelNet IDS", layout="wide")
 
 # ==============================
-# 🔥 HACKER UI STYLE
+# 🔥 UI STYLE
 # ==============================
 st.markdown("""
 <style>
@@ -30,25 +30,22 @@ h1 { text-shadow: 0 0 15px #00f7ff; }
     border: 1px solid #00f7ff;
     padding: 15px;
     border-radius: 12px;
-    box-shadow: 0 0 15px rgba(0,255,255,0.4);
 }
 .stButton>button {
     background: black;
     border: 1px solid #00f7ff;
     color: #00f7ff;
-    font-weight: bold;
-    border-radius: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🔊 SOUND ALERT
+# 🔊 ALERT SOUND
 # ==============================
 def play_alert():
     st.markdown("""
     <audio autoplay>
-        <source src="https://www.soundjay.com/button/beep-07.wav" type="audio/wav">
+        <source src="https://www.soundjay.com/button/beep-07.wav">
     </audio>
     """, unsafe_allow_html=True)
 
@@ -57,14 +54,12 @@ def play_alert():
 # ==============================
 def load_pkl_from_drive(file_id, filename):
     if not os.path.exists(filename):
-        url = f"https://drive.google.com/uc?id={file_id}"
-        gdown.download(url, filename, quiet=False)
+        gdown.download(f"https://drive.google.com/uc?id={file_id}", filename, quiet=False)
     return joblib.load(filename)
 
 def load_csv_from_drive(file_id, filename):
     if not os.path.exists(filename):
-        url = f"https://drive.google.com/uc?id={file_id}"
-        gdown.download(url, filename, quiet=False)
+        gdown.download(f"https://drive.google.com/uc?id={file_id}", filename, quiet=False)
     return pd.read_csv(filename)
 
 # ==============================
@@ -176,22 +171,10 @@ if run or mode == "Real-Time":
 
     st.session_state.history.append(attack_percent)
 
-    # 🚨 ALERT
+    # ALERT
     if attack_count > 0:
         play_alert()
-        st.markdown(f"""
-        <div style="background:#ff0000;padding:15px;border-radius:10px;
-        text-align:center;font-size:22px;color:white;animation:blink 1s infinite;">
-        🚨 CRITICAL ALERT: {attack_count} Intrusions Detected!
-        </div>
-        <style>
-        @keyframes blink {{
-            0% {{opacity:1;}}
-            50% {{opacity:0.4;}}
-            100% {{opacity:1;}}
-        }}
-        </style>
-        """, unsafe_allow_html=True)
+        st.error(f"🚨 {attack_count} Intrusions Detected!")
     else:
         st.success("✅ SYSTEM SECURE")
 
@@ -201,31 +184,24 @@ if run or mode == "Real-Time":
     c2.metric("Attacks", attack_count)
     c3.metric("Attack %", f"{attack_percent:.2f}%")
 
-    # RISK
-    if attack_percent > 50:
-        st.markdown("### 🔴 Risk Level: HIGH")
-    elif attack_percent > 20:
-        st.markdown("### 🟠 Risk Level: MEDIUM")
-    else:
-        st.markdown("### 🟢 Risk Level: LOW")
-
     st.markdown("---")
 
     # TREND
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
-    # 🌍 MAP
-   st.subheader("🌍 Live Attack Map")
-   num_points = max(1, attack_count * 5)
-   np.random.seed(int(time.time()))
+    # 🌍 MAP (FIXED)
+    st.subheader("🌍 Live Attack Map")
 
-   attack_points = pd.DataFrame({
-       "lat": np.random.uniform(-60, 60, num_points),
-       "lon": np.random.uniform(-180, 180, num_points)
-   })
+    num_points = max(1, attack_count * 5)
+    np.random.seed(int(time.time()))
 
-   st.map(attack_points)
+    attack_points = pd.DataFrame({
+        "lat": np.random.uniform(-60, 60, num_points),
+        "lon": np.random.uniform(-180, 180, num_points)
+    })
+
+    st.map(attack_points)
 
     # 📡 NETWORK
     st.subheader("📡 Network Activity")
@@ -247,12 +223,14 @@ if run or mode == "Real-Time":
     col1, col2 = st.columns(2)
 
     with col1:
+        st.subheader("Confusion Matrix")
         cm = confusion_matrix(y_real, y_pred_real)
         fig, ax = plt.subplots()
         ax.imshow(cm)
         st.pyplot(fig)
 
     with col2:
+        st.subheader("ROC Curve")
         fpr, tpr, _ = roc_curve(y_real, y_score_real)
         fig, ax = plt.subplots()
         ax.plot(fpr, tpr)
