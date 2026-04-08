@@ -5,8 +5,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.metrics import confusion_matrix, roc_curve, auc
+from sklearn.metrics import confusion_matrix, roc_curve
 import matplotlib.pyplot as plt
 import joblib
 import gdown
@@ -30,30 +29,24 @@ body {
     font-family: monospace;
 }
 h1 {
-    text-shadow: 0 0 20px #00f7ff, 0 0 40px #00f7ff;
+    text-shadow: 0 0 20px #00f7ff;
 }
 .stMetric {
     background: #020617;
     border: 1px solid #00f7ff;
     padding: 15px;
     border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0,255,255,0.5);
 }
 .stButton>button {
     background: black;
     border: 1px solid #00f7ff;
     color: #00f7ff;
-    border-radius: 10px;
-}
-[data-testid="stDataFrame"] {
-    border: 1px solid #00f7ff;
-    box-shadow: 0 0 15px rgba(0,255,255,0.3);
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# ALERT SOUND
+# 🔊 ALERT SOUND
 # ==============================
 def play_alert():
     st.markdown("""
@@ -117,8 +110,8 @@ if "history" not in st.session_state:
 # HEADER
 # ==============================
 st.markdown("""
-<h1 style='text-align:center; color:#00f7ff;'>🚨 SentinelNet IDS</h1>
-<p style='text-align:center; color:#aaa;'>AI-Powered Intrusion Detection System</p>
+<h1 style='text-align:center;'>🚨 SentinelNet IDS</h1>
+<p style='text-align:center;'>AI-Powered Intrusion Detection System</p>
 <hr>
 """, unsafe_allow_html=True)
 
@@ -179,7 +172,6 @@ if run or mode == "Real-Time":
     pred, scores, idx = simulate(sample_size)
 
     attack_count = int(np.sum(pred))
-    normal_count = int(np.sum(pred == 0))
     attack_percent = float(np.mean(pred) * 100)
 
     st.session_state.history.append(attack_percent)
@@ -203,93 +195,75 @@ if run or mode == "Real-Time":
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
-   # ==============================
-# 🌍 CYBER MAP
-# ==============================
-st.subheader("🌍 Real-Time Cyber Attack Map")
+    # ==============================
+    # 🌍 REAL-TIME CYBER MAP
+    # ==============================
+    st.subheader("🌍 Real-Time Cyber Attack Map")
 
-regions = {
-    "USA": (37.77, -122.41),
-    "India": (28.61, 77.20),
-    "UK": (51.50, -0.12),
-    "Germany": (52.52, 13.40),
-    "Russia": (55.75, 37.61),
-    "China": (31.23, 121.47),
-    "Brazil": (-23.55, -46.63),
-    "Australia": (-33.86, 151.20)
-}
+    regions = {
+        "USA": (37.77, -122.41),
+        "India": (28.61, 77.20),
+        "UK": (51.50, -0.12),
+        "Germany": (52.52, 13.40),
+        "Russia": (55.75, 37.61),
+        "China": (31.23, 121.47),
+        "Brazil": (-23.55, -46.63),
+        "Australia": (-33.86, 151.20)
+    }
 
-region_names = list(regions.keys())
+    region_names = list(regions.keys())
+    np.random.seed(int(time.time()))
 
-np.random.seed(int(time.time()))
-
-# 🔥 BETTER SPREAD POINTS
-points = []
-for _ in range(max(15, attack_count * 6)):
-    r = np.random.choice(region_names)
-    lat, lon = regions[r]
-
-    points.append({
-        "lat": lat + np.random.normal(0, 4),   # 👈 more spread
-        "lon": lon + np.random.normal(0, 4),
-        "size": np.random.randint(80000, 200000)
-    })
-
-points_df = pd.DataFrame(points)
-
-# 🌐 CLEANER FLOW LINES
-flows = []
-for _ in range(min(15, attack_count + 5)):  # 👈 reduced lines
-    src = np.random.choice(region_names)
-    dst = np.random.choice(region_names)
-
-    if src != dst:
-        src_lat, src_lon = regions[src]
-        dst_lat, dst_lon = regions[dst]
-
-        flows.append({
-            "from_lat": src_lat,
-            "from_lon": src_lon,
-            "to_lat": dst_lat,
-            "to_lon": dst_lon
+    # POINTS
+    points = []
+    for _ in range(max(15, attack_count * 6)):
+        r = np.random.choice(region_names)
+        lat, lon = regions[r]
+        points.append({
+            "lat": lat + np.random.normal(0, 4),
+            "lon": lon + np.random.normal(0, 4),
+            "size": np.random.randint(80000, 200000)
         })
 
-flow_df = pd.DataFrame(flows)
+    points_df = pd.DataFrame(points)
 
-# 🔥 GLOW POINTS
-layer_points = pdk.Layer(
-    "ScatterplotLayer",
-    data=points_df,
-    get_position='[lon, lat]',
-    get_radius="size",
-    get_color='[0, 255, 255, 120]',  # 👈 transparency glow
-    pickable=True
-)
+    # FLOWS
+    flows = []
+    for _ in range(min(15, attack_count + 5)):
+        src, dst = np.random.choice(region_names, 2, replace=False)
+        flows.append({
+            "from_lat": regions[src][0],
+            "from_lon": regions[src][1],
+            "to_lat": regions[dst][0],
+            "to_lon": regions[dst][1]
+        })
 
-# 🌐 SMOOTH ARCS
-layer_lines = pdk.Layer(
-    "ArcLayer",
-    data=flow_df,
-    get_source_position='[from_lon, from_lat]',
-    get_target_position='[to_lon, to_lat]',
-    get_source_color='[255, 0, 0, 180]',
-    get_target_color='[0, 255, 255, 180]',
-    get_width=3,
-    great_circle=True   # 👈 smoother curves
-)
+    flow_df = pd.DataFrame(flows)
 
-view_state = pdk.ViewState(
-    latitude=20,
-    longitude=0,
-    zoom=1.2,
-    pitch=25
-)
+    # MAP LAYERS
+    layer_points = pdk.Layer(
+        "ScatterplotLayer",
+        data=points_df,
+        get_position='[lon, lat]',
+        get_radius="size",
+        get_color='[0, 255, 255, 120]'
+    )
 
-st.pydeck_chart(pdk.Deck(
-    layers=[layer_points, layer_lines],
-    initial_view_state=view_state,
-    map_style='mapbox://styles/mapbox/dark-v10'
-))
+    layer_lines = pdk.Layer(
+        "ArcLayer",
+        data=flow_df,
+        get_source_position='[from_lon, from_lat]',
+        get_target_position='[to_lon, to_lat]',
+        get_source_color='[255, 0, 0]',
+        get_target_color='[0, 255, 255]',
+        get_width=3
+    )
+
+    st.pydeck_chart(pdk.Deck(
+        layers=[layer_points, layer_lines],
+        initial_view_state=pdk.ViewState(latitude=20, longitude=0, zoom=1.2),
+        map_style='mapbox://styles/mapbox/dark-v10'
+    ))
 
     st.markdown("---")
 
@@ -321,6 +295,7 @@ st.pydeck_chart(pdk.Deck(
     })
 
     st.dataframe(df.head(30), use_container_width=True)
+
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
     if mode == "Real-Time":
