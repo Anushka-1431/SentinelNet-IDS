@@ -196,73 +196,74 @@ if run or mode == "Real-Time":
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
 
     # ==============================
-    # 🌍 REAL CYBER MAP (FIXED)
-    # ==============================
-    st.subheader("🌍 Live Cyber Attack Map")
+# 🌍 FIXED REAL CYBER MAP
+# ==============================
+st.subheader("🌍 Live Cyber Attack Map")
 
-    regions = {
-        "USA": (37.77, -122.41),
-        "India": (28.61, 77.20),
-        "China": (31.23, 121.47),
-        "Russia": (55.75, 37.61),
-        "Germany": (52.52, 13.40),
-        "UK": (51.50, -0.12),
-        "Brazil": (-23.55, -46.63),
-        "Australia": (-33.86, 151.20)
-    }
+regions = {
+    "USA": (37.77, -122.41),
+    "India": (28.61, 77.20),
+    "China": (31.23, 121.47),
+    "Russia": (55.75, 37.61),
+    "Germany": (52.52, 13.40),
+    "UK": (51.50, -0.12),
+    "Brazil": (-23.55, -46.63),
+    "Australia": (-33.86, 151.20)
+}
 
-    region_names = list(regions.keys())
-    np.random.seed(int(time.time()))
+region_names = list(regions.keys())
+np.random.seed(int(time.time()))
 
-    flows = []
-    for _ in range(max(8, attack_count * 2)):
-        src = np.random.choice(region_names)
-        dst = np.random.choice(region_names)
+flows = []
+for _ in range(max(10, attack_count * 2)):
+    src, dst = np.random.choice(region_names, 2, replace=False)
 
-        if src != dst:
-            flows.append({
-                "from_lat": regions[src][0],
-                "from_lon": regions[src][1],
-                "to_lat": regions[dst][0],
-                "to_lon": regions[dst][1],
-                "weight": np.random.randint(1, 5)
-            })
+    flows.append({
+        "from_lon": regions[src][1],
+        "from_lat": regions[src][0],
+        "to_lon": regions[dst][1],
+        "to_lat": regions[dst][0]
+    })
 
-    flow_df = pd.DataFrame(flows)
+flow_df = pd.DataFrame(flows)
 
-    arc_layer = pdk.Layer(
-        "ArcLayer",
-        data=flow_df,
-        get_source_position='[from_lon, from_lat]',
-        get_target_position='[to_lon, to_lat]',
-        get_source_color='[255, 100, 100, 200]',
-        get_target_color='[255, 255, 150, 200]',
-        get_width="weight * 1.5",
-        great_circle=True
-    )
+# 🔥 Arc Layer
+arc_layer = pdk.Layer(
+    "ArcLayer",
+    data=flow_df,
+    get_source_position='[from_lon, from_lat]',
+    get_target_position='[to_lon, to_lat]',
+    get_source_color=[255, 100, 100],
+    get_target_color=[0, 255, 200],
+    get_width=2,
+)
 
-    node_data = pd.DataFrame([
-        {"lat": v[0], "lon": v[1]} for v in regions.values()
-    ])
+# 🔥 Nodes
+node_df = pd.DataFrame([
+    {"lat": v[0], "lon": v[1]} for v in regions.values()
+])
 
-    node_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=node_data,
-        get_position='[lon, lat]',
-        get_radius=150000,
-        get_fill_color='[255, 200, 0, 180]'
-    )
+node_layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=node_df,
+    get_position='[lon, lat]',
+    get_radius=200000,
+    get_fill_color=[255, 255, 0],
+)
 
-    st.pydeck_chart(pdk.Deck(
+# 🔥 FINAL MAP (THIS FIXES EVERYTHING)
+deck = pdk.Deck(
     layers=[arc_layer, node_layer],
     initial_view_state=pdk.ViewState(
-        latitude=10,
+        latitude=20,
         longitude=0,
-        zoom=0.6,
-        pitch=25
+        zoom=1,
+        pitch=30,
     ),
-    map_style="mapbox://styles/mapbox/dark-v11"
-), use_container_width=True)
+    map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"  # ✅ NO TOKEN NEEDED
+)
+
+st.pydeck_chart(deck, use_container_width=True)
 
     st.markdown("---")
 
