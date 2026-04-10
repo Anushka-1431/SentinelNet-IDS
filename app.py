@@ -24,7 +24,7 @@ from datetime import datetime
 st.set_page_config(page_title="SentinelNet IDS", layout="wide")
 
 # ==============================
-# 🔥 MATRIX UI STYLE
+# UI STYLE
 # ==============================
 st.markdown("""
 <style>
@@ -55,7 +55,7 @@ def play_alert():
     """, unsafe_allow_html=True)
 
 # ==============================
-# 📩 EMAIL ALERT FUNCTION
+# EMAIL ALERT FUNCTION
 # ==============================
 def send_email_alert(attack_count, attack_percent, severity, df):
     sender_email = "your_email@gmail.com"
@@ -94,7 +94,7 @@ Take immediate action!
         print("❌ Email Failed:", e)
 
 # ==============================
-# GOOGLE DRIVE LOADER
+# LOADERS
 # ==============================
 def load_pkl_from_drive(file_id, filename):
     if not os.path.exists(filename):
@@ -179,6 +179,25 @@ def simulate(sample_size):
     return pred, score, idx
 
 # ==============================
+# REAL EVALUATION
+# ==============================
+def evaluate_real():
+    iso_s = -iso.decision_function(X_real)
+    lof_s = -lof.decision_function(X_real)
+
+    X_pca = pca_model.transform(X_real)
+    ocsvm_s = -ocsvm.decision_function(X_pca)
+
+    iso_s = MinMaxScaler().fit_transform(iso_s.reshape(-1,1)).ravel()
+    lof_s = MinMaxScaler().fit_transform(lof_s.reshape(-1,1)).ravel()
+    ocsvm_s = MinMaxScaler().fit_transform(ocsvm_s.reshape(-1,1)).ravel()
+
+    score = 0.6*iso_s + 0.25*ocsvm_s + 0.15*lof_s
+    pred = (score >= best_t).astype(int)
+
+    return pred, score
+
+# ==============================
 # CONTROLS
 # ==============================
 mode = st.radio("Mode", ["Manual", "Real-Time"], horizontal=True)
@@ -197,7 +216,7 @@ if run or mode == "Real-Time":
 
     st.session_state.history.append(attack_percent)
 
-    # 🚨 ALERT SYSTEM
+    # ALERT SYSTEM
     if attack_count > 0:
         play_alert()
 
@@ -210,18 +229,17 @@ if run or mode == "Real-Time":
 
         st.error(f"🚨 {attack_count} Intrusions Detected! | Severity: {severity_level}")
 
-        # 📩 EMAIL with cooldown
         current_time = time.time()
 
         if current_time - st.session_state.last_email_time > 60:
             if severity_level == "HIGH":
-                df = pd.DataFrame({
+                df_email = pd.DataFrame({
                     "ID": idx,
                     "Score": scores,
                     "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
                 })
 
-                send_email_alert(attack_count, attack_percent, severity_level, df)
+                send_email_alert(attack_count, attack_percent, severity_level, df_email)
                 st.session_state.last_email_time = current_time
     else:
         st.success("✅ SYSTEM SECURE")
@@ -234,6 +252,17 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
+    # PIE CHART
+    st.subheader("🥧 Traffic Distribution")
+    labels = ["Normal", "Attack"]
+    sizes = [len(pred) - attack_count, attack_count]
+
+    fig, ax = plt.subplots()
+    ax.pie(sizes, labels=labels, autopct='%1.1f%%')
+    st.pyplot(fig)
+
+    st.markdown("---")
+
     # TREND
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
@@ -241,6 +270,34 @@ if run or mode == "Real-Time":
     # NETWORK
     st.subheader("📡 Network Activity")
     st.line_chart(pd.DataFrame({"Traffic Score": scores}))
+
+    st.markdown("---")
+
+    # MODEL EVALUATION
+    st.subheader("📊 Model Evaluation")
+
+    y_pred_real, y_score_real = evaluate_real()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        cm = confusion_matrix(y_real, y_pred_real)
+        fig, ax = plt.subplots()
+        ax.imshow(cm)
+
+        for i in range(len(cm)):
+            for j in range(len(cm)):
+                ax.text(j, i, cm[i, j], ha='center', va='center', color='white')
+
+        st.pyplot(fig)
+
+    with col2:
+        fpr, tpr, _ = roc_curve(y_real, y_score_real)
+        fig, ax = plt.subplots()
+        ax.plot(fpr, tpr)
+        st.pyplot(fig)
+
+    st.markdown("---")
 
     # LOGS
     df = pd.DataFrame({
