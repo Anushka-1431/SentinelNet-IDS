@@ -356,6 +356,21 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
+    # MODEL
+    st.subheader("📊 Model Evaluation")
+    y_pred_real, y_score_real = evaluate_real()
+    col1, col2 = st.columns(2)
+    with col1:
+        fig, ax = plt.subplots()
+        ax.imshow(confusion_matrix(y_real, y_pred_real))
+        st.pyplot(fig)
+    with col2:
+        fpr, tpr, _ = roc_curve(y_real, y_score_real)
+        fig, ax = plt.subplots()
+        ax.plot(fpr, tpr)
+        st.pyplot(fig)
+    st.markdown("---")
+
     # LOGS
     df = pd.DataFrame({
         "ID": idx,
