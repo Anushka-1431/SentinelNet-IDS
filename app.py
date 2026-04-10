@@ -218,12 +218,48 @@ if run or mode == "Real-Time":
     else:
         st.success("✅ SYSTEM SECURE")
 
-    # METRICS
+    # CUSTOM COLORED METRIC BOXES
     c1, c2, c3 = st.columns(3)
-    c1.metric("Traffic", len(pred))
-    c2.metric("Attacks", attack_count)
-    c3.metric("Attack %", f"{attack_percent:.2f}%")
 
+    with c1:
+        st.markdown(f"""
+        <div style="
+            background-color:#001f3f;
+            padding:20px;
+            border-radius:12px;
+            text-align:center;
+            border:1px solid #00f7ff;">
+            <h3 style="color:#00f7ff;">📡 Traffic</h3>
+            <h1 style="color:white;">{len(pred)}</h1>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+        <div style="
+            background-color:#330000;
+            padding:20px;
+            border-radius:12px;
+            text-align:center;
+            border:1px solid #ff4d4d;">
+            <h3 style="color:#ff4d4d;">🚨 Attacks</h3>
+            <h1 style="color:white;">{attack_count}</h1>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"""
+        <div style="
+            background-color:#332600;
+            padding:20px;
+            border-radius:12px;
+            text-align:center;
+            border:1px solid #ffa500;">
+            <h3 style="color:#ffa500;">📊 Attack %</h3>
+            <h1 style="color:white;">{attack_percent:.2f}%</h1>
+        </div>
+        """, unsafe_allow_html=True)
+    
     st.markdown("---")
 
     # TREND (ENHANCED)
