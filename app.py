@@ -226,6 +226,7 @@ if run or mode == "Real-Time":
         <div style="
             background-color:#001f3f;
             padding:20px;
+            box-shadow: 0 0 15px #00f7ff;
             border-radius:12px;
             text-align:center;
             border:1px solid #00f7ff;">
@@ -239,6 +240,7 @@ if run or mode == "Real-Time":
         <div style="
             background-color:#330000;
             padding:20px;
+            box-shadow: 0 0 15px #00f7ff;
             border-radius:12px;
             text-align:center;
             border:1px solid #ff4d4d;">
@@ -252,6 +254,7 @@ if run or mode == "Real-Time":
         <div style="
             background-color:#332600;
             padding:20px;
+            box-shadow: 0 0 15px #00f7ff;
             border-radius:12px;
             text-align:center;
             border:1px solid #ffa500;">
