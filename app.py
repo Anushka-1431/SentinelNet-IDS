@@ -13,23 +13,24 @@ import time
 import os
 import pydeck as pdk
 
-# 📩 EMAIL IMPORTS
-import smtplib
-from email.mime.text import MIMEText
-from datetime import datetime
-
 # ==============================
 # PAGE CONFIG
 # ==============================
 st.set_page_config(page_title="SentinelNet IDS", layout="wide")
 
 # ==============================
-# UI STYLE
+# 🔥 MATRIX UI STYLE
 # ==============================
 st.markdown("""
 <style>
-body { background-color: black; color: #00ffcc; font-family: monospace; }
-h1 { text-shadow: 0 0 20px #00f7ff; }
+body {
+    background-color: black;
+    color: #00ffcc;
+    font-family: monospace;
+}
+h1 {
+    text-shadow: 0 0 20px #00f7ff;
+}
 .stMetric {
     background: #020617;
     border: 1px solid #00f7ff;
@@ -55,46 +56,7 @@ def play_alert():
     """, unsafe_allow_html=True)
 
 # ==============================
-# EMAIL ALERT FUNCTION
-# ==============================
-def send_email_alert(attack_count, attack_percent, severity, df):
-    sender_email = "your_email@gmail.com"
-    sender_password = "your_app_password"
-    receiver_email = "admin_email@gmail.com"
-
-    subject = "🚨 SentinelNet ALERT: Intrusion Detected!"
-
-    body = f"""
-⚠️ ALERT: Network Intrusion Detected
-
-Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-Number of Attacks: {attack_count}
-Attack Percentage: {attack_percent:.2f}%
-Severity Level: {severity}
-
-Top Suspicious Logs:
-{df.head(5).to_string(index=False)}
-
-Take immediate action!
-"""
-
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = receiver_email
-
-    try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, receiver_email, msg.as_string())
-        server.quit()
-        print("✅ Email Sent")
-    except Exception as e:
-        print("❌ Email Failed:", e)
-
-# ==============================
-# LOADERS
+# GOOGLE DRIVE LOADER
 # ==============================
 def load_pkl_from_drive(file_id, filename):
     if not os.path.exists(filename):
@@ -144,9 +106,6 @@ X_synthetic_scaled, X_real, y_real = load_data()
 if "history" not in st.session_state:
     st.session_state.history = []
 
-if "last_email_time" not in st.session_state:
-    st.session_state.last_email_time = 0
-
 # ==============================
 # HEADER
 # ==============================
@@ -181,6 +140,7 @@ def simulate(sample_size):
 # ==============================
 # REAL EVALUATION
 # ==============================
+@st.cache_data
 def evaluate_real():
     iso_s = -iso.decision_function(X_real)
     lof_s = -lof.decision_function(X_real)
@@ -216,31 +176,10 @@ if run or mode == "Real-Time":
 
     st.session_state.history.append(attack_percent)
 
-    # ALERT SYSTEM
+    # ALERT
     if attack_count > 0:
         play_alert()
-
-        if attack_percent > 50:
-            severity_level = "HIGH"
-        elif attack_percent > 20:
-            severity_level = "MEDIUM"
-        else:
-            severity_level = "LOW"
-
-        st.error(f"🚨 {attack_count} Intrusions Detected! | Severity: {severity_level}")
-
-        current_time = time.time()
-
-        if current_time - st.session_state.last_email_time > 60:
-            if severity_level == "HIGH":
-                df_email = pd.DataFrame({
-                    "ID": idx,
-                    "Score": scores,
-                    "Prediction": ["ATTACK" if p==1 else "NORMAL" for p in pred]
-                })
-
-                send_email_alert(attack_count, attack_percent, severity_level, df_email)
-                st.session_state.last_email_time = current_time
+        st.error(f"🚨 {attack_count} Intrusions Detected!")
     else:
         st.success("✅ SYSTEM SECURE")
 
@@ -252,43 +191,86 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # PIE CHART
-    st.subheader("🥧 Traffic Distribution")
-    labels = ["Normal", "Attack"]
-    sizes = [len(pred) - attack_count, attack_count]
-
-    fig, ax = plt.subplots()
-    ax.pie(sizes, labels=labels, autopct='%1.1f%%')
-    st.pyplot(fig)
-
-    st.markdown("---")
-
     # TREND
     st.subheader("📈 Attack Trend")
     st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
+
+    # ==============================
+    # 🌍 CYBER MAP (FINAL FIX)
+    # ==============================
+    st.subheader("🌍 Live Cyber Attack Map")
+
+    regions = {
+        "USA": (37.77, -122.41),
+        "India": (28.61, 77.20),
+        "China": (31.23, 121.47),
+        "Russia": (55.75, 37.61),
+        "Germany": (52.52, 13.40),
+        "UK": (51.50, -0.12),
+        "Brazil": (-23.55, -46.63),
+        "Australia": (-33.86, 151.20)
+    }
+
+    region_names = list(regions.keys())
+    np.random.seed(int(time.time()))
+
+    flows = []
+    for _ in range(max(10, attack_count * 2)):
+        src, dst = np.random.choice(region_names, 2, replace=False)
+        flows.append({
+            "from_lon": regions[src][1],
+            "from_lat": regions[src][0],
+            "to_lon": regions[dst][1],
+            "to_lat": regions[dst][0]
+        })
+
+    flow_df = pd.DataFrame(flows)
+
+    arc_layer = pdk.Layer(
+        "ArcLayer",
+        data=flow_df,
+        get_source_position='[from_lon, from_lat]',
+        get_target_position='[to_lon, to_lat]',
+        get_source_color=[255, 120, 120],
+        get_target_color=[255, 255, 120],
+        get_width=2,
+    )
+
+    deck = pdk.Deck(
+        layers=[arc_layer],
+        initial_view_state=pdk.ViewState(
+            latitude=15,
+            longitude=0,
+            zoom=0.4,
+            pitch=30,
+        ),
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+    )
+
+    st.pydeck_chart(deck, use_container_width=True)
+
+    st.markdown("---")
 
     # NETWORK
     st.subheader("📡 Network Activity")
     st.line_chart(pd.DataFrame({"Traffic Score": scores}))
 
+    # SEVERITY
+    st.subheader("🚨 Attack Severity")
+    severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
+    st.bar_chart(pd.Series(severity).value_counts())
+
     st.markdown("---")
 
-    # MODEL EVALUATION
+    # MODEL
     st.subheader("📊 Model Evaluation")
-
     y_pred_real, y_score_real = evaluate_real()
 
     col1, col2 = st.columns(2)
 
     with col1:
-        cm = confusion_matrix(y_real, y_pred_real)
         fig, ax = plt.subplots()
-        ax.imshow(cm)
-
-        for i in range(len(cm)):
-            for j in range(len(cm)):
-                ax.text(j, i, cm[i, j], ha='center', va='center', color='white')
-
+        ax.imshow(confusion_matrix(y_real, y_pred_real))
         st.pyplot(fig)
 
     with col2:
