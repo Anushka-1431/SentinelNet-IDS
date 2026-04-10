@@ -299,61 +299,60 @@ if run or mode == "Real-Time":
         "Traffic Score": scores
     }))
 
-    # SEVERITY (COMPACT & CLEAN PIE CHART)
-    st.subheader("🥧 Attack Distribution")
+   # SEVERITY (PROFESSIONAL PIE CHART)
+    st.subheader("🥧 Attack Severity Distribution")
 
     severity = [
-        "🔥 HIGH" if s > 0.8 else
-        "⚠ MEDIUM" if s > 0.5 else
-        "🟢 LOW"
+        "HIGH" if s > 0.8 else
+        "MEDIUM" if s > 0.5 else
+        "LOW"
         for s in scores
     ]
 
     severity_counts = pd.Series(severity).value_counts()
 
-    # Smaller figure size
+    # Define clean colors
+    color_map = {
+        "HIGH": "#ff4d4d",    # Red
+        "MEDIUM": "#ffa500",  # Orange
+        "LOW": "#00ffcc"      # Cyan (matches your theme)
+    }
+
+    colors = [color_map[key] for key in severity_counts.index]
+
+    # Create smaller, neat figure
     fig, ax = plt.subplots(figsize=(4, 4))
 
-    colors = ["#ff4d4d", "#ffa500", "#00ffcc"]  # Red, Orange, Cyan
-
-    ax.pie(
+    wedges, texts, autotexts = ax.pie(
         severity_counts,
-        labels=severity_counts.index,
         autopct='%1.1f%%',
         startangle=90,
         colors=colors,
-        textprops={'fontsize': 10},
-        wedgeprops={'edgecolor': 'black'}
+        wedgeprops={'edgecolor': 'black'},
+        textprops={'fontsize': 10}
     )
 
-    ax.set_title("Severity Distribution", fontsize=12)
+    # Remove messy labels on pie
+    for text in texts:
+        text.set_visible(False)
+
     ax.axis('equal')
 
-    # Center the chart nicely
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
+    # Create legend (VERY IMPORTANT)
+    ax.legend(
+        wedges,
+        severity_counts.index,
+        title="Severity Levels",
+        loc="center left",
+        bbox_to_anchor=(1, 0.5)
+    )
+
+    # Center layout
+    col1, col2 = st.columns([1,2])
+    with col1:
         st.pyplot(fig)
 
     plt.close(fig)
-
-    st.markdown("---")
-
-    # MODEL
-    st.subheader("📊 Model Evaluation")
-    y_pred_real, y_score_real = evaluate_real()
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        fig, ax = plt.subplots()
-        ax.imshow(confusion_matrix(y_real, y_pred_real))
-        st.pyplot(fig)
-
-    with col2:
-        fpr, tpr, _ = roc_curve(y_real, y_score_real)
-        fig, ax = plt.subplots()
-        ax.plot(fpr, tpr)
-        st.pyplot(fig)
 
     st.markdown("---")
 
