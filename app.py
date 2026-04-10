@@ -223,12 +223,21 @@ if run or mode == "Real-Time":
     c1.metric("Traffic", len(pred))
     c2.metric("Attacks", attack_count)
     c3.metric("Attack %", f"{attack_percent:.2f}%")
+    
+    # ATTACK STATUS BAR
+    st.progress(min(int(attack_percent), 100))
 
     st.markdown("---")
 
-    # TREND
-    st.subheader("📈 Attack Trend")
-    st.line_chart(pd.DataFrame({"Attack %": st.session_state.history}))
+    # TREND (ENHANCED)
+    st.subheader("📈 Attack Trend Analysis")
+
+    trend_df = pd.DataFrame({
+        "Time Step": range(len(st.session_state.history)),
+        "Attack %": st.session_state.history
+    })
+
+    st.area_chart(trend_df.set_index("Time Step"))
 
     # ==============================
     # 🌍 CYBER MAP (FINAL FIX)
@@ -286,14 +295,39 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # NETWORK
-    st.subheader("📡 Network Activity")
-    st.line_chart(pd.DataFrame({"Traffic Score": scores}))
+    # NETWORK (REAL-TIME STREAM)
+    st.subheader("📡 Real-Time Traffic Monitor")
 
-    # SEVERITY
-    st.subheader("🚨 Attack Severity")
-    severity = ["HIGH" if s>0.8 else "MEDIUM" if s>0.5 else "LOW" for s in scores]
-    st.bar_chart(pd.Series(severity).value_counts())
+    chart_data = pd.DataFrame(columns=["Traffic Score"])
+    chart = st.line_chart(chart_data)
+
+    for i in range(len(scores)):
+        new_row = pd.DataFrame({"Traffic Score": [scores[i]]})
+        chart.add_rows(new_row)
+        time.sleep(0.005)
+
+    # SEVERITY (PIE CHART)
+    st.subheader("🥧 Attack Distribution")
+
+    severity = [
+        "🔥 HIGH" if s > 0.8 else
+        "⚠ MEDIUM" if s > 0.5 else
+        "🟢 LOW"
+        for s in scores
+    ]
+
+    severity_counts = pd.Series(severity).value_counts()
+
+    fig, ax = plt.subplots()
+    ax.pie(
+        severity_counts,
+        labels=severity_counts.index,
+        autopct='%1.1f%%',
+        startangle=90
+    )
+    ax.axis('equal')
+
+    st.pyplot(fig)
 
     st.markdown("---")
 
