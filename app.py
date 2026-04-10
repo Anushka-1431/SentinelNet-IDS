@@ -216,7 +216,7 @@ if run or mode == "Real-Time":
             st.session_state.last_telegram_time = current_time
 
     else:
-    st.success("✅ SYSTEM SECURE")
+        st.success("✅ SYSTEM SECURE")
 
     # METRICS
     c1, c2, c3 = st.columns(3)
