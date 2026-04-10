@@ -299,7 +299,7 @@ if run or mode == "Real-Time":
         "Traffic Score": scores
     }))
 
-    # SEVERITY (PIE CHART)
+    # SEVERITY (COMPACT & CLEAN PIE CHART)
     st.subheader("🥧 Attack Distribution")
 
     severity = [
@@ -311,16 +311,29 @@ if run or mode == "Real-Time":
 
     severity_counts = pd.Series(severity).value_counts()
 
-    fig, ax = plt.subplots()
+    # Smaller figure size
+    fig, ax = plt.subplots(figsize=(4, 4))
+
+    colors = ["#ff4d4d", "#ffa500", "#00ffcc"]  # Red, Orange, Cyan
+
     ax.pie(
         severity_counts,
         labels=severity_counts.index,
         autopct='%1.1f%%',
-        startangle=90
+        startangle=90,
+        colors=colors,
+        textprops={'fontsize': 10},
+        wedgeprops={'edgecolor': 'black'}
     )
+
+    ax.set_title("Severity Distribution", fontsize=12)
     ax.axis('equal')
 
-    st.pyplot(fig)
+    # Center the chart nicely
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.pyplot(fig)
+
     plt.close(fig)
 
     st.markdown("---")
