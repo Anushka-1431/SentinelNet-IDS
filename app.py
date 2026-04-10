@@ -12,6 +12,7 @@ import gdown
 import time
 import os
 import pydeck as pdk
+import requests
 
 # ==============================
 # PAGE CONFIG
@@ -54,7 +55,34 @@ def play_alert():
         <source src="https://www.soundjay.com/button/beep-07.wav">
     </audio>
     """, unsafe_allow_html=True)
+#================================
+#Telegram alret
+#================================
+def send_telegram_alert(attack_count, attack_percent):
+    BOT_TOKEN = "8783707577:AAFuIiNFRWNulzr5W_B75-baivKqLH8ZvlU"
+    CHAT_ID = "6463555361"
 
+    severity = "🔥 HIGH" if attack_percent > 50 else "⚠ MEDIUM" if attack_percent > 20 else "🟢 LOW"
+
+    message = f"""
+🚨 SentinelNet Alert!
+
+⚠ Intrusion Detected
+🔢 Attacks: {attack_count}
+📊 Attack %: {attack_percent:.2f}%
+🚦 Severity: {severity}
+
+🛡 Immediate action required!
+"""
+
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message
+    }
+
+    requests.post(url, data=data)
 # ==============================
 # GOOGLE DRIVE LOADER
 # ==============================
@@ -105,7 +133,8 @@ X_synthetic_scaled, X_real, y_real = load_data()
 # ==============================
 if "history" not in st.session_state:
     st.session_state.history = []
-
+if "last_telegram_time" not in st.session_state:
+    st.session_state.last_telegram_time = 0
 # ==============================
 # HEADER
 # ==============================
@@ -180,8 +209,14 @@ if run or mode == "Real-Time":
     if attack_count > 0:
         play_alert()
         st.error(f"🚨 {attack_count} Intrusions Detected!")
+
+        current_time = time.time()
+        if current_time - st.session_state.last_telegram_time > 30:
+            send_telegram_alert(attack_count, attack_percent)
+            st.session_state.last_telegram_time = current_time
+
     else:
-        st.success("✅ SYSTEM SECURE")
+    st.success("✅ SYSTEM SECURE")
 
     # METRICS
     c1, c2, c3 = st.columns(3)
