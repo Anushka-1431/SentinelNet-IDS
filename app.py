@@ -295,16 +295,12 @@ if run or mode == "Real-Time":
 
     st.markdown("---")
 
-    # NETWORK (REAL-TIME STREAM)
-    st.subheader("📡 Real-Time Traffic Monitor")
+   # NETWORK (STABLE VERSION)
+    st.subheader("📡 Network Activity")
 
-    chart_data = pd.DataFrame(columns=["Traffic Score"])
-    chart = st.line_chart(chart_data)
-
-    for i in range(len(scores)):
-        new_row = pd.DataFrame({"Traffic Score": [scores[i]]})
-        chart.add_rows(new_row)
-        time.sleep(0.005)
+    st.line_chart(pd.DataFrame({
+        "Traffic Score": scores
+    }))
 
     # SEVERITY (PIE CHART)
     st.subheader("🥧 Attack Distribution")
@@ -328,6 +324,7 @@ if run or mode == "Real-Time":
     ax.axis('equal')
 
     st.pyplot(fig)
+    plt.close(fig)
 
     st.markdown("---")
 
@@ -361,5 +358,5 @@ if run or mode == "Real-Time":
     st.download_button("Download Logs", df.to_csv(index=False), "logs.csv")
 
     if mode == "Real-Time":
-        time.sleep(5)
+        time.sleep(8)
         st.rerun()
