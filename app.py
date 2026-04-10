@@ -223,9 +223,6 @@ if run or mode == "Real-Time":
     c1.metric("Traffic", len(pred))
     c2.metric("Attacks", attack_count)
     c3.metric("Attack %", f"{attack_percent:.2f}%")
-    
-    # ATTACK STATUS BAR
-    st.progress(min(int(attack_percent), 100))
 
     st.markdown("---")
 
@@ -237,7 +234,7 @@ if run or mode == "Real-Time":
         "Attack %": st.session_state.history
     })
 
-    st.area_chart(trend_df.set_index("Time Step"))
+    st.line_chart(trend_df.set_index("Time Step"),use_container_width=True)
 
     # ==============================
     # 🌍 CYBER MAP (FINAL FIX)
